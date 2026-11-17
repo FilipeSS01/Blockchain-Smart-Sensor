@@ -1,0 +1,7 @@
+# Dados persistentes do Mosquitto
+/data/*
+!/data/.gitkeep
+
+# Logs do Mosquitto
+/log/*
+!/log/.gitkeep
