@@ -1,0 +1,3 @@
+[submodule "IoTOperator"]
+	path = IoTOperator
+	url = https://github.com/ryamaguti07/IoTOperator.git
