@@ -55,7 +55,13 @@ Justificativas arquiteturais de projeto:
 
 **Nível 6 — Gerência e Visualização (Python).** Interface de supervisão e administração do sistema, responsável pela visualização dos dados processados e pelo gerenciamento dos parâmetros operacionais. Permite consultar informações históricas, acompanhar os resultados das análises e configurar parâmetros utilizados pelo sistema, integrando as funções de monitoramento e gerenciamento.
 
-![Framework LoRa](<./imagens/Framework LoRa.png>)
+<p align="center">
+  <img src="Imagens/Framework%20LoRa.png"
+       alt="Arquitetura do sistema MoT"
+       width="900">
+  <br>
+  <em>Figura 1 — Arquitetura do sistema MoT.</em>
+</p>
 
 ## 1.3 Diagrama Arquitetural Ponta a Ponta
 
@@ -131,9 +137,12 @@ A plataforma integra comunicação LoRa e permite a conexão de periféricos uti
 
 No protótipo, foram conectados o sensor de temperatura e umidade DHT22, o leitor RFID RC522, o display circular GC9A01 e os componentes de sinalização e interação.
 
-<p align="center">   
-  <img src="./imagens/Sensor1.jpeg" alt="Protótipo do Nó Sensor MoT" width="450"><br>   
-  <em>Figura 1 — Protótipo do nó sensor MoT utilizando a placa PK-LoRa desenvolvida pela Unicamp<em>   
+<p align="center">
+  <img src="Imagens/Sensor1.jpeg"
+       alt="Nó Sensor MoT"
+       width="450">
+  <br>
+  <em>Protótipo do Nó Sensor MoT.</em>
 </p>
 
 ### 2.1.2 Gateway LoRa
@@ -145,8 +154,11 @@ O dispositivo é responsável por estabelecer a comunicação entre os nós sens
 O gateway recebe os pacotes transmitidos pelos sensores via LoRa e os encaminha ao broker MQTT por Wi-Fi. No sentido inverso, recebe mensagens do servidor por MQTT e as retransmite aos nós sensores por LoRa.
 
 <p align="center">
-  <img src="./imagens/Gateway.jpeg" alt="Módulo LoRa JVTECH v2.0 utilizado como Gateway" width="450"><br>
-  <em>Figura 2 — Gateway MoT implementado com o Módulo LoRa JVTECH v2.0.</em>
+  <img src="Imagens/Gateway.jpeg"
+       alt="Gateway MoT"
+       width="450">
+  <br>
+  <em>Protótipo do Gateway LoRa.</em>
 </p>
 
 
