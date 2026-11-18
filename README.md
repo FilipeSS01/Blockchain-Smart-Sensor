@@ -749,7 +749,8 @@ Funções: `garantir_diretorios`, `carregar_pessoas`, `carregar_sensores_cadastr
 
 # 7. Referências
 
-[1] YAMAGUTI, R. et al. IoT and Blockchain for Support
-for Smart Contracts Through TpM. Sensors, v. 25,
-n. 16, art. 5001, 2025.
-https://doi.org/10.3390/s25165001
+[1] FERREIRA, L. C. B. C. et al. **A PBL-Based Methodology for IoT Teaching.** *IEEE Communications Magazine*, 2019. DOI: [10.1109/MCOM.001.1900242](https://doi.org/10.1109/MCOM.001.1900242).
+
+[2] FERREIRA, L. C. B. C. et al. **The Three-Phase Methodology for IoT Project Development.** *Internet of Things*, v. 20, art. 100624, 2022. DOI: [10.1016/j.iot.2022.100624](https://doi.org/10.1016/j.iot.2022.100624).
+
+[3] YAMAGUTI, R. et al. **IoT and Blockchain for Support for Smart Contracts Through TpM.** *Sensors*, v. 25, n. 16, art. 5001, 2025. DOI: [10.3390/s25165001](https://doi.org/10.3390/s25165001).
