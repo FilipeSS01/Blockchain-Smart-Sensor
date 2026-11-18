@@ -1,11 +1,4 @@
-# Protocolo MoT — Monitoramento e Rastreabilidade de Custódia via LoRa/MQTT (Frame de 24 Bytes)
-
-**Documentação técnico-científica e repositório técnico de engenharia**
-Sistema: Nó Sensor Multifuncional (ESP32 PK-LoRa) · Gateway MoT (ESP32 PK-LoRa) · Servidor/Árbitro Python (`main.py`) · Persistência N4 (`N4.py`, CSV/JSON/TXT)
-
-> **Convenção de fidelidade.** Todos os valores numéricos (pinos, potências, timeouts, janelas de backoff, offsets, chaves NVS) foram extraídos literalmente dos arquivos-fonte fornecidos. Valores *derivados* (ex.: tempo no ar) estão explicitamente marcados como tal. Divergências e riscos identificados no código estão consolidados na seção **8 – Observações de Engenharia**. Credenciais Wi-Fi presentes no firmware do Gateway foram deliberadamente omitidas deste documento.
-
----
+# Blockchain Smart Sensor
 
 ## Sumário
 
@@ -15,26 +8,32 @@ Sistema: Nó Sensor Multifuncional (ESP32 PK-LoRa) · Gateway MoT (ESP32 PK-LoRa
 4. Arquitetura em Camadas do Nó Sensor vs. Arquitetura do Gateway
 5. Máquina de Estados Finitos e Dinâmica dos Fluxos Operacionais
 6. Servidor Central Nível 3 (`main.py`) e Camada de Dados Nível 4
+7. Referências
 
 ---
 
-# 1. Resumo Executivo e Arquitetura Sistêmica (Ponta a Ponta)
+# 1. Resumo e Arquitetura Sistêmica (Ponta a Ponta)
 
 ## 1.1 Contextualização Científica
 
-Redes LPWAN baseadas em LoRa são otimizadas para telemetria esporádica de baixa taxa, com alcance de quilômetros e consumo reduzido. Aplicações logísticas e de ativos críticos (equipamentos, amostras, instrumentos) exigem, além do monitoramento ambiental contínuo, a **rastreabilidade da custódia**: saber, de forma auditável, *quem* detém fisicamente *qual objeto* em cada instante, e como a posse é transferida entre responsáveis.
+## Contextualização
 
-O Protocolo MoT aborda esse problema acoplando duas funções normalmente separadas:
+O monitoramento e a rastreabilidade de equipamentos são importantes para organizações que precisam controlar a utilização, a localização e a responsabilidade sobre seus ativos. Sistemas tradicionais de gerenciamento podem apresentar dificuldades para identificar quem está utilizando determinado equipamento, acompanhar seu histórico de movimentação e manter registros confiáveis sobre sua utilização.
 
-1. **Telemetria ambiental** (temperatura e umidade via DHT22) com métricas de enlace (RSSI/SNR de downlink e uplink) e contadores de transporte, permitindo análise científica de desempenho do canal (Packet Error Rate, correlação RSSI/SNR).
-2. **Cadeia de custódia física**, baseada em identificação RFID (RC522) de duas entidades — *Operador* (pessoa) e *Objeto* — com arbitragem centralizada de posse e protocolo de *handover* de consentimento mútuo.
+Fundamentado no trabalho de **Yamaguti et al. (2025)**, que apresenta a integração entre Internet das Coisas (IoT), Blockchain e a metodologia **TpM+**, este projeto propõe uma solução de monitoramento e rastreabilidade de equipamentos utilizando comunicação LoRa, identificação RFID e gerenciamento centralizado. A implementação concentra-se na aquisição de dados, na comunicação entre dispositivos e no controle de custódia, seguindo a arquitetura de seis níveis utilizada como referência pela metodologia.
+
+A solução contempla duas funcionalidades principais:
+
+1. **Monitoramento ambiental:** coleta de temperatura e umidade por meio do sensor DHT22, juntamente com métricas de comunicação LoRa (RSSI/SNR) e contadores de transmissão, permitindo avaliar as condições ambientais e o desempenho da comunicação entre os dispositivos.
+
+2. **Rastreabilidade e controle de custódia:** identificação de operadores e objetos por meio de RFID (RC522), permitindo registrar responsáveis, acompanhar o histórico de utilização e realizar transferências de custódia (*handover*) mediante confirmação dos envolvidos.
 
 Justificativas arquiteturais de projeto:
 
 | Decisão de projeto | Fundamentação |
 |---|---|
 | **Frame de tamanho fixo (24 bytes)** | Elimina campo de comprimento e parsing variável; reduz o tempo no ar (ToA) e o risco de fragmentação; permite validação trivial (`len == 24`) em todos os níveis (C++, Python, MQTT). |
-| **`union` binária + `#pragma pack(1)`** | Serialização *zero-copy*: o mesmo buffer de 24 bytes é lido pelo rádio como `uint8_t[24]` e interpretado como struct tipada, sem *marshalling*. |
+| **`union` binária + `#pragma pack(1)`** | Permite utilizar os mesmos 24 bytes tanto para transmitir dados pelo rádio quanto para acessar os campos da estrutura, sem precisar converter ou copiar os dados. |
 | **Acesso ao meio por CAD + backoff aleatório (CSMA/CA-like)** | LoRa não oferece detecção de colisão nativa; o *Channel Activity Detection* do RFM95 detecta preâmbulo LoRa e o recuo aleatório reduz colisões entre nós. |
 | **Isolamento de barramento SPI por Chip Select em HIGH** | Três escravos heterogêneos (RFM95, RC522, GC9A01) compartilham SCK/MISO/MOSI; apenas um CS pode estar em LOW por vez. |
 | **Arbitragem centralizada (Nível 3)** | Posse de objeto é um recurso exclusivo; um árbitro único evita estados divergentes (*split-brain*) entre nós. |
@@ -44,11 +43,19 @@ Justificativas arquiteturais de projeto:
 
 **Nível 1 — Nó Sensor Multifuncional (ESP32 PK-LoRa).** Aquisição de dados (DHT22), identificação física (RFID RC522), interface homem-máquina (display redondo GC9A01, três LEDs, botão) e pilha protocolar MoT em 6 camadas (PHY, MAC, NET, TRANSP, APP, DISPLAY).
 
-**Nível 2 — Gateway MoT (ESP32 PK-LoRa).** Ponte transparente bidirecional LoRa ↔ Wi-Fi/MQTT (QoS 1), com cache de duplicatas e aferição de RSSI/SNR de uplink.
+**Nível 2 — Comunicação e Integração (LoRa ↔ Wi-Fi/MQTT).** Responsável pelos enlaces de comunicação entre os nós sensores, o gateway e o servidor central (Nível 3). Utiliza LoRa para a comunicação entre sensores e gateway, enquanto a integração com o servidor ocorre por Wi-Fi/MQTT (QoS 1). O gateway, implementado com o módulo LoRa JVTECH v2.0, atua como ponte bidirecional entre essas tecnologias, realizando o encaminhamento dos frames MoT, o controle de duplicatas e a coleta de métricas de enlace (RSSI/SNR de uplink).
 
 **Nível 3 — Servidor Central e Árbitro de Rede (`main.py`).** Orquestra regras de negócio: provisionamento dinâmico (Join), autenticação de operadores, arbitragem de handover e polling ativo. Opera por USB/Serial (`GerenciadorSerial`) ou Nuvem/MQTT (`GerenciadorMQTT`).
 
+**Operador IoT & Blockchain — Integração Externa (API REST/HTTP).** Componente externo responsável pela com serviços de IoT e Blockchain. Estabelece comunicação bidirecional com o Nível 3 por meio de requisições HTTP utilizando uma API REST, permitindo a troca de informações e a interação com as funcionalidades disponibilizadas pelo servidor central.
+
 **Nível 4 — Persistência (`N4.py` + CSV).** Base cadastral (`pessoas.csv`, `sensores_cadastrados.txt`, `sessoes_ativas.json`) e registro histórico de dados brutos (`Dados_Brutos/Sessao_MoT_*.csv`).
+
+**Nível 5 — Processamento e Análise de Dados (Python).** Responsável pelo processamento dos dados brutos armazenados no Nível 4, realizando tratamento, organização e transformação das informações coletadas. Gera conjuntos de dados processados para análise e visualização, mantendo a separação entre os registros originais e os resultados do processamento.
+
+**Nível 6 — Gerência e Visualização (Python).** Interface de supervisão e administração do sistema, responsável pela visualização dos dados processados e pelo gerenciamento dos parâmetros operacionais. Permite consultar informações históricas, acompanhar os resultados das análises e configurar parâmetros utilizados pelo sistema, integrando as funções de monitoramento e gerenciamento.
+
+![Framework LoRa](<imagens/Framework LoRa.png>)
 
 ## 1.3 Diagrama Arquitetural Ponta a Ponta
 
@@ -112,9 +119,40 @@ flowchart LR
 
 # 2. Especificação de Hardware, Concorrência SPI e Parâmetros de Rádio
 
-## 2.1 Mapeamento de Hardware (GPIO)
+## 2.1. Protótipos de Hardware
 
-### 2.1.1 Nó Sensor (`BSS_Sensor_Display.ino` / `BSS_LoRa.ino`)
+Para a implementação e validação experimental do protocolo MoT, foram utilizados dois dispositivos baseados no microcontrolador ESP32, responsáveis pela aquisição de dados e pela comunicação entre a rede LoRa e o servidor central.
+
+### 2.1.1 Nó Sensor LoRa
+
+O nó sensor foi desenvolvido utilizando a placa **PK-LoRa**, desenvolvida pela **Universidade Estadual de Campinas (Unicamp)**, em conjunto com um módulo **ESP32-WROOM-32 de 30 pinos**.
+
+A plataforma integra comunicação LoRa e permite a conexão de periféricos utilizados no monitoramento ambiental e na identificação de operadores e objetos.
+
+No protótipo, foram conectados o sensor de temperatura e umidade DHT22, o leitor RFID RC522, o display circular GC9A01 e os componentes de sinalização e interação.
+
+<p align="center">   
+  <img src="imagens/Sensor1.jpeg" alt="Protótipo do Nó Sensor MoT" width="450"><br>   
+  <em>Figura 1 — Protótipo do nó sensor MoT utilizando a placa PK-LoRa desenvolvida pela Unicamp<em>   
+</p>
+
+### 2.1.2 Gateway LoRa
+
+Para o gateway, foi utilizado o **Módulo LoRa JVTECH v2.0**, adquirido no site da **JVTECH**.
+
+O dispositivo é responsável por estabelecer a comunicação entre os nós sensores e o servidor central, funcionando como uma ponte bidirecional entre a rede LoRa e a infraestrutura Wi-Fi/MQTT.
+
+O gateway recebe os pacotes transmitidos pelos sensores via LoRa e os encaminha ao broker MQTT por Wi-Fi. No sentido inverso, recebe mensagens do servidor por MQTT e as retransmite aos nós sensores por LoRa.
+
+<p align="center">
+  <img src="imagens/Gateway.jpeg" alt="Módulo LoRa JVTECH v2.0 utilizado como Gateway" width="450"><br>
+  <em>Figura 2 — Gateway MoT implementado com o Módulo LoRa JVTECH v2.0.</em>
+</p>
+
+
+## 2.2 Mapeamento de Hardware (GPIO)
+
+### 2.2.1 Nó Sensor (`BSS_Sensor_Display.ino` / `BSS_LoRa.ino`)
 
 | Função | Símbolo | GPIO | Periférico | Observação |
 |---|---|---|---|---|
@@ -135,7 +173,7 @@ flowchart LR
 | LED verde | `LED_VERDE_PIN` | 4 | LED | RX / sucesso |
 | Botão | `BOTAO_PIN` | 39 | Botão | `INPUT`, ativo em LOW (pressionado = `LOW`) |
 
-### 2.1.2 Gateway (`BSS_Gateway.ino` / `MoT_Gateway.ino`)
+### 2.2.2 Gateway (`BSS_Gateway.ino` / `MoT_Gateway.ino`)
 
 | Função | Símbolo | GPIO | Observação |
 |---|---|---|---|
@@ -148,7 +186,7 @@ flowchart LR
 | LED vermelho | `LED_VERMELHO_PIN` | 15 | Pisca 40 ms a cada TX de downlink |
 | LED verde | `LED_VERDE_PIN` | 4 | 1000 ms na inicialização; 40 ms a cada uplink publicado |
 
-## 2.2 Engenharia de Concorrência no Barramento SPI Compartilhado
+## 2.3 Engenharia de Concorrência no Barramento SPI Compartilhado
 
 O barramento SPI é *multi-drop* síncrono: SCK, MISO e MOSI são comuns a todos os escravos, e a seleção ocorre exclusivamente por CS dedicado. A regra de ouro é **no máximo um CS em nível LOW por vez**; qualquer escravo com CS em HIGH mantém MISO em alta impedância e ignora o tráfego. As três linhas de CS são `NSS_PIN = 18` (RFM95), `RFID_SS = 23` (RC522) e `TFT_CS = 25` (GC9A01).
 
@@ -161,7 +199,7 @@ Mecanismos implementados:
 5. **Leitura RFID.** Em `App_verificar_RFID()` e `App_ler_tag_com_timeout()`, `digitalWrite(NSS_PIN, HIGH)` é reafirmado antes de cada `PICC_IsNewCardPresent()`.
 6. **Bloqueio travante.** Após autenticação do operador, o nó entra em laço `while (!objetoLido)` que mantém `NSS_PIN` em `HIGH` a cada iteração (com `yield()` + `delay(20)` para alimentar o *watchdog*), garantindo que nenhuma operação LoRa interfira na leitura crítica do RC522. Durante esse laço o rádio é **cego**: nenhum downlink é processado.
 
-## 2.3 Perfil de Rádio Frequência (LoRa 915 MHz)
+## 2.4 Perfil de Rádio Frequência (LoRa 915 MHz)
 
 | Parâmetro | Nó Sensor | Gateway | Justificativa |
 |---|---|---|---|
@@ -697,3 +735,9 @@ Funções: `garantir_diretorios`, `carregar_pessoas`, `carregar_sensores_cadastr
 | 13 | `Responsavel` | `sessoes_ativas` | Nome do operador ou "Sem Custódia" |
 | 14 | `Raw_Hex` | Bytes 0–23 | Frame completo em hexadecimal |
 
+# 7. Referências
+
+[1] YAMAGUTI, R. et al. IoT and Blockchain for Support
+for Smart Contracts Through TpM. Sensors, v. 25,
+n. 16, art. 5001, 2025.
+https://doi.org/10.3390/s25165001
